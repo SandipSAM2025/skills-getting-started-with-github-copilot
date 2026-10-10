@@ -111,10 +111,28 @@ def signup_for_activity(activity_name: str, email: str):
     if any(p.strip().lower() == email_clean for p in activity.get("participants", [])):
         raise HTTPException(status_code=409, detail="Student already registered for activity")
 
-# Validate student is not already signed up
-    if email in activity["participants"]:
-        raise HTTPException(status_code=400, detail="Student is already signed up")
+    # Validate capacity
+    if len(activity.get("participants", [])) >= activity.get("max_participants", 0):
+        raise HTTPException(status_code=400, detail="Activity is full")
 
     # Add student
     activity.setdefault("participants", []).append(email_clean)
     return {"message": f"Signed up {email_clean} for {activity_name}"}
+
+
+@app.delete("/activities/{activity_name}/participants")
+def remove_participant(activity_name: str, email: str):
+    """Unregister a student from an activity"""
+    if activity_name not in activities:
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    activity = activities[activity_name]
+    email_clean = email.strip().lower()
+    participants = activity.get("participants", [])
+
+    for participant in participants:
+        if participant.strip().lower() == email_clean:
+            participants.remove(participant)
+            return {"message": f"Unregistered {email_clean} from {activity_name}"}
+
+    raise HTTPException(status_code=404, detail="Participant not found")
